@@ -1,0 +1,186 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+Sensor at x=2, y=18: closest beacon is at x=-2, y=15
+Sensor at x=9, y=16: closest beacon is at x=10, y=16
+Sensor at x=13, y=2: closest beacon is at x=15, y=3
+Sensor at x=12, y=14: closest beacon is at x=10, y=16
+Sensor at x=10, y=20: closest beacon is at x=10, y=16
+Sensor at x=14, y=17: closest beacon is at x=10, y=16
+Sensor at x=8, y=7: closest beacon is at x=2, y=10
+Sensor at x=2, y=0: closest beacon is at x=2, y=10
+Sensor at x=0, y=11: closest beacon is at x=2, y=10
+Sensor at x=20, y=14: closest beacon is at x=25, y=17
+Sensor at x=17, y=20: closest beacon is at x=21, y=22
+Sensor at x=16, y=7: closest beacon is at x=15, y=3
+Sensor at x=14, y=3: closest beacon is at x=15, y=3
+Sensor at x=20, y=1: closest beacon is at x=15, y=3
+`;
+
+let lines = raw_data.trim().split("\n");
+
+//manhattan distance
+function manhattan( ax,ay, bx,by ){ return Math.abs( ax-bx ) + Math.abs( ay-by ); }
+
+function array_unique( a ){ 
+  let u = [];
+  a.forEach( elem => { if( array_indexOf_obj(u,elem) < 0 )u.push(elem); } );
+  return u;
+}
+
+function array_indexOf_obj( a, needle ){
+	let out = a.findIndex( elem => JSON.stringify(elem)==JSON.stringify(needle) );
+	return out;
+}
+
+//----------------
+
+// test point in field against sensor areas
+function isInside( x,y ){
+  let out = sensors.findIndex( elem => manhattan( x,y, elem.x,elem.y ) <= elem.dist );
+  return ( out >= 0 );
+}
+
+
+let sensors = [];
+let beacons = [];
+
+//process the input
+for( let i=0; i<lines.length ;i++){
+  let line = lines[i];
+  let a = line.split("=").slice(1).map( s => parseInt( s.split(" ")[0]) );
+  sensors.push( { 'x':a[0], 'y':a[1], 'dist':manhattan( a[0],a[1], a[2],a[3] ) } );
+  beacons.push( {'x':a[2], 'y':a[3] } );
+}
+
+beacons = array_unique( beacons );
+
+//collect 4 diagonals from sensors
+// tl  o  tr
+//    / \
+//   o S o
+//    \ /  .
+// bl  o  br
+let slash = []; 
+let bslash = [];
+sensors.forEach( elem => {
+  let tl_at_y0 = (elem.x -elem.dist) + elem.y;
+  let br_at_y0 = (elem.x +elem.dist) + elem.y;
+  let bl_at_y0 = (elem.x -elem.dist) - elem.y;
+  let tr_at_y0 = (elem.x +elem.dist) - elem.y;
+  slash.push( tl_at_y0, br_at_y0 );
+  bslash.push( bl_at_y0, tr_at_y0 );
+});
+
+slash = array_unique(slash);
+bslash = array_unique(bslash);
+
+slash.sort( (a,b)=>(a-b) );
+bslash.sort( (a,b)=>(a-b) );
+
+
+function part1( ty ){
+  let combined = [];
+
+  // collect all edges at height $ty
+  combined = combined.concat( slash.slice().map( elem => elem - ty ) );
+  combined = combined.concat( bslash.slice().map( elem => elem + ty ) );
+  combined = array_unique( combined );
+  combined.sort( (a,b)=>(a-b) );
+
+  let total = 0;
+        
+  //test edges
+  for(let i=0; i<combined.length; i++ ){
+      if( isInside( combined[i], ty ) ){ total++; }
+  }
+
+  //test between edges
+  for(let i=0; i<combined.length-1; i++ ){
+    let delta = combined[i+1] - combined[i] ;
+    if( delta > 1 && isInside( combined[i]+1, ty ) ){ total += delta-1; }
+  }
+
+  //remove wrongly counted beacons locations
+  for(let i=0; i<beacons.length; i++){
+    if(  beacons[i].y==ty && isInside( beacons[i].x, ty) ){ total--; }
+  }
+
+  return total;
+}
+
+
+function part2( dim ){
+
+  for(let y=0;y<bslash.length; y++)
+  for(let x=0;x< slash.length; x++){
+    //search for single pixel gap around diagonal crossings
+
+    // find intersection point of 2 diagonals
+    //   +----b---s--
+    //   |     \ /  .
+    //   py    px
+    //   |     / \
+    //  b+y == s-1
+    //  2y = s-b
+    let py = ( slash[x] - bslash[y] )/2;
+    let px = bslash[y] + py;
+
+    //ignore intersect at half y (n.5)
+    if( (py|0) != py )continue;
+
+    //ignore intersect outside box
+    if( px<1 || py <1 || px>dim || py>dim )continue;
+	
+    //check corners	for empty space
+    if( !isInside( px-1,py ) ){ return {'x':px-1,'y':py}; }
+    if( !isInside( px+1,py ) ){ return {'x':px+1,'y':py}; }
+    if( !isInside( px,py-1 ) ){ return {'x':px,'y':py-1}; }
+    if( !isInside( px,py+1 ) ){ return {'x':px,'y':py+1}; }
+  }
+  return null;
+}
+
+// use differnt values for example input
+if( sensors[0].x==2 && sensors[0].y==18 ){
+  let total = part1( 10 );
+  let gap = part2( 20 );
+  println( "pt1", total );
+  if( gap != null )println("pt2", gap.x *4_000_000 +gap.y );
+}
+else {
+  let total = part1( 2_000_000 );  
+  let gap = part2( 4_000_000 );  
+  println( "pt1", total );
+  if( gap != null )println("pt2", gap.x *4_000_000 +gap.y );
+}
+
+//println("expected example ", 26, 56000011 );
+//println("expected puzzle  ", 6124805, 12555527364986 );
+
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
