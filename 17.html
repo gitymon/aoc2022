@@ -1,0 +1,284 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+>>><<><>><<<>><>>><<<>>><<<><<<>><>><<>>
+`;
+
+let lines = raw_data.trim().split("\n");
+
+
+let shapes = [
+
+[1,1,1,1, 0,0,0,0, 0,0,0,0, 0,0,0,0],
+[0,1,0,0, 1,1,1,0, 0,1,0,0, 0,0,0,0],
+[0,0,1,0, 0,0,1,0, 1,1,1,0, 0,0,0,0],
+[1,0,0,0, 1,0,0,0, 1,0,0,0, 1,0,0,0],
+[1,1,0,0, 1,1,0,0, 0,0,0,0, 0,0,0,0],
+
+];
+
+
+let wind = raw_data.trim();
+
+
+let curblok = 0;
+let cury = 0;
+let curx = 2;
+
+let field = [];
+let height = 4;
+let chop = 0;
+let nrok = 0;
+let samples = [];
+
+function init_game(){
+  field = [];
+  height= 4;
+  for(let i=0; i<4*7; i++){ field[i] = '.'; }
+  chop = 0;
+  nrok = 0;
+
+  curblok = 0;
+  cury = 0 ;
+  curx = 2;
+  samples = [];
+}
+
+
+function can_move( dirx,diry ){
+
+	for(let y=0; y<4; y++)
+	for(let x=0; x<4; x++){
+
+		if( shapes[ curblok ][x+y*4 ] == 0 )continue;
+
+		let px = curx + x + dirx;
+		let py = cury + y + diry;	
+	
+		if( px <  0 )return 0;
+		if( px >= 7 )return 0;
+		if( py >= height ) return 0;
+
+		let f = field[ px + py * 7 ];
+		if( f != '.' )return 0;
+	}
+	return 1;
+}
+
+
+function persist( c ){
+	for(let y=0; y<4; y++)
+	for(let x=0; x<4; x++){
+		if( shapes[ curblok ][x+y*4 ] == 0 )continue;
+		field[  curx+x + (cury+y)*7 ] = c;
+	}
+}
+
+function first_row(){
+  for(let y=0; y<height; y++)
+    for(let x=0; x<7; x++){
+	let c = field[x+y*7] ;
+	if( c != '.' ) return y;
+   }	
+   return height;
+}		
+
+
+
+function addline(){
+  for(let x=0;x<7;x++)field.unshift('.');
+  height++;
+}
+function rline(){
+  for(let x=0;x<7;x++)field.shift();
+  height--;
+}
+
+
+function line_killer(){
+
+  let kill = -1;  
+
+  for(let y=3; y<height; y++){
+   
+    // #######
+    let count = 0;
+    for(let x=0; x<7; x++){
+	let c = field[x+y*7] ;
+	if( c != '.' ) count++;
+     }
+     if( count == 7 ){ kill =y;	break; }
+   
+     // ####...
+     // ..#####
+     count = 0;    
+     for(let x=0; x<7; x++){
+       let c = field[x+y*7] ;
+       let c2 = field[x+y*7+7] ;
+       if( c != '.' || c2 !='.' ) count++;
+     }
+     if( count == 7 ){ kill =y+1; break; }
+   }
+
+   if( kill >= 0 ){
+	chop += ( height - kill );
+	field = field.slice(0, kill*7);
+	height = kill;
+  }
+}
+
+
+//---------------------
+
+
+function calc_score( nof_blocks ){
+
+  init_game();
+
+  let wi=0;
+  while( true ) {
+  
+  let c = wind[wi%wind.length]; 
+  wi++;
+
+  let dirx = 0;
+  if( c == '<' )dirx = -1;
+  if( c == '>' )dirx =  1;
+  if( can_move( dirx,0 ) )curx += dirx;
+
+  if( can_move(0,1) ){
+    cury++;
+  }
+  else {
+
+	persist( curblok+"" );
+  
+
+     line_killer();
+		
+     nrok++;
+
+	let score = chop + ( height - first_row() );
+	samples.push( score );
+    
+	if( nrok >= nof_blocks )break;
+ 
+    //create exactly 3 empty rows
+    let to = first_row();
+
+	if( to < 3 ){
+	    	for( let i=0; i<(3-to); i++){ 
+		    addline();
+  		} 
+	}
+
+	if( to > 3 ){
+		for(let i=0; i<(to-3); i++){
+			rline();
+		}
+	}
+
+    
+    curblok++;
+    curblok %= 5;
+    
+    curx=2;
+    cury=0;
+ 
+	// flat
+    if( curblok == 0 ){
+	addline();
+    }
+
+    // cross or L
+    if( curblok == 1 || curblok==2 ){
+	addline();
+	addline();
+	addline();
+    }
+    
+    // tall
+	if( curblok == 3 ){
+	addline();
+	addline();
+	addline();
+	addline();
+	}
+
+	//blok
+	if( curblok== 4){
+	addline();;
+	addline();
+	}
+
+ 
+  }
+
+
+}
+
+ return chop + ( height - first_row() );
+}// function calc_score
+
+
+let run1 = calc_score( 2022 );
+println( "pt1", run1 );
+
+
+
+let secret = -1;
+//take lot of samples ( this wil take some time )
+calc_score( 200_000 );
+//range guess
+for(p=10; p<3000; p++){
+
+ //check if it repeats enough, better check entire 200_000 range..
+ let a = samples[ p*2] - samples[p ]; //1period
+ let b = samples[ p*3] - samples[p ]; //2periods
+ let c = samples[ p*5] - samples[p ]; //4 periods
+ let d = samples[ p*9] - samples[p ]; //8periods
+
+  if( 2*a==b && 2*b==c && 2*c==d ){
+  //  println("-- found period of atleast 8:", p, a );
+    secret = p;
+  }
+}
+
+
+
+// use period to get to the answer quicker
+let n = 1_000_000_000_000 / secret | 0;
+let m = 1_000_000_000_000 % secret ;
+let start =  calc_score( m );
+let delta = calc_score( m+secret ) - start;
+println("pt2", start + delta* n );
+
+
+//println("expected example ", 3068, 1_514_285_714_288 );
+//println("expected puzzle  ", 3191, 1_572_093_023_267 );
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
