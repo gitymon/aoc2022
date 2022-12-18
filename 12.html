@@ -1,0 +1,121 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+Sabqponm
+abcryxxl
+accszExk
+acctuvwj
+abdefghi
+`;
+
+let lines = raw_data.trim().split("\n");
+function stoa( s ){ return [...s]; }
+function ctoi( c ){ return (''+c).charCodeAt(0) ; }
+
+//------------------
+
+//process the input
+
+let dim = {x: lines[0].length , y:  lines.length };
+
+let s = { x:-1,y:-1};
+let e = { x:-1,y:-1};
+
+//some typed arrays
+let height = new Int16Array(dim.x*dim.y); // contents are initialized to 0.
+let dist = new Int16Array(dim.x*dim.y);
+
+for( let i=0; i<lines.length ;i++){
+  let line = stoa( lines[i] );
+
+  line.forEach( (c,x) => {
+    if( c=='S' ){ s.x=x; s.y=i; c='a'; }
+    if( c=='E' ){ e.x=x; e.y=i; c='z'; }
+    height[x+i*dim.x] = ctoi(c)-97;
+  });
+
+}
+
+//create distance field 
+for(let i=0; i<(dim.x*dim.y); i++){ dist[i] = -1; } // -1 means unsolved
+dist[e.x + e.y * dim.x] = 0; // distance to end is solved
+
+
+function step(){
+  let updates = 0;
+  for(let y=0; y<dim.y; y++){
+    for(let x=0; x<dim.x; x++){
+      let ofs = x + y * dim.x;
+      if( dist[ofs] >= 0 )continue; //already solved
+      let c = height[ofs];
+
+      // check neighbour: not-is-border && is-solved && is-descent
+      let nbors = [ {'x':-1,'y':0,'o':-1}, {'x':1,'y':0,'o':1}, {'x':0,'y':-1,'o':-dim.x}, {'x':0,'y':1,'o':dim.x} ];
+      nbors.forEach( nb => {
+        if( 
+          x+nb.x >= 0 && x+nb.x < dim.x && y+nb.y >= 0 && y+nb.y < dim.y && // within border
+	  dist[ofs+nb.o] >= 0 && // is solved
+          c+1 >= height[ofs+nb.o] // is descent
+        ){ 
+          dist[ofs] = dist[ofs+nb.o] +1;
+          updates++;
+        }
+      });
+    }
+  }
+  return updates;
+}
+
+function puz2_exit(){
+  let a_pos = [];
+  for(let i=0; i<(dim.x*dim.y); i++){
+    if( height[i] == 0 && dist[i]>=0 ){ a_pos.push( i ); }
+  }
+  return a_pos.sort( (a,b)=>(dist[a]-dist[b]) )[0];
+}
+
+
+// while( progressing )
+for(let i=0; i< 1000; i++){
+  let prog = step();
+  if( !prog ){ /* println("halt @",i); */ break; }
+}
+
+//println( "size / start / end", dim, s,e );
+
+println( "pt1", dist[s.x +s.y*dim.x] );
+
+
+let idx = puz2_exit();
+println( "pt2", dist[ idx ] );
+
+
+// println("expected example ", 31,29 );
+// println("expected puzzle  ", 423, 416 );
+
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
