@@ -1,0 +1,113 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+498,4 -> 498,6 -> 496,6
+503,4 -> 502,4 -> 502,9 -> 494,9
+`;
+
+let lines = raw_data.trim().split("\n");
+
+let pairs = [];
+let height = 0;
+
+//process the input
+for( let i=0; i<lines.length ;i++){
+  let line = lines[i];
+  let points = line.split(" -> ")
+	.map( xy => xy.split(",") )
+	.map( xy => ({"x":xy[0]|0,"y":xy[1]|0}) );
+  
+  height = points.reduce( (h,elem) => Math.max(elem.y,h) , height );
+ 
+  //create lines with positive directions 
+  for(let j=0; j<points.length-1 ; j++){
+    let ab = [ points[j], points[j+1] ].sort( (a,b) => (a.x-b.x)+(a.y-b.y) );
+    pairs.push( ab );
+  }
+}
+
+	
+// resize to allow floor (pt2)
+height += 3;
+
+let field = null
+function init_field(){
+  field = new Int8Array(height*1024); // assume: contents are initialized to 0.
+
+  //draw lines in hori- and verti- directions for simplicity
+  pairs.forEach( ab => {
+    let a,b; [a,b]=ab;
+    for(let x=0; x<=(b.x-a.x); x++){  field[ (a.x +x) +  a.y     *1024 ] = 1; }
+    for(let y=0; y<=(b.y-a.y); y++){  field[  a.x     + (a.y +y) *1024 ] = 1; }
+  });
+}
+
+
+function drop(){
+  let s = 500 + 0*1024;
+  if( field[s] ){ return 0; } // field is full
+
+  while( s < (height-1)*1024 ){
+
+    // merge 3 cells below current into single value
+    let abc =	field[ s-1 +1024 ]<<2 | 
+		field[ s   +1024 ]<<1 | 
+		field[ s+1 +1024 ];
+
+    switch( abc ){
+      /* .#. */case 2:
+      /* .## */case 3: s--; break; // move left
+      /* ##. */case 6: s++; break; // move right
+      /* ### */case 7: field[s] = 1 ;  return 1; // stop moving
+    }
+    s += 1024; // move down
+  }
+
+  return 0;
+}
+
+init_field();
+for(let i=0; i<100_000; i++){
+	let hit = drop();
+	if( !hit ){ println('pt1', i ); break; }
+}
+
+// pt2: is with finite floor added
+init_field();
+for(x=0; x<1024; x++){ field[x +(height-1)*1024 ] = 1; }
+
+for(let i=0; i<100_000; i++){
+	let hit = drop();
+	if( !hit ){ println('pt2', i ); break; }
+}
+
+
+//println("expected example ", 24, 93 );
+//println("expected puzzle  ", 672, 26831 );
+
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
