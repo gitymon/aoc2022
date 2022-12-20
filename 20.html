@@ -37,7 +37,7 @@ function shuf( circ, nofRound ){
       let idx = circ.findIndex( e => e[0]==i );
       let e = circ.splice( idx, 1 )[0];
 
-      // js was of inserting 1 element
+      // js way of inserting 1 element
       let idx2 = ( idx + e[1] + 256* circ.length ) % circ.length;
       circ.splice( idx2, 0, e );
     }
