@@ -1,0 +1,102 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+root: pppw + sjmn
+dbpl: 5
+cczh: sllz + lgvd
+zczc: 2
+ptdq: humn - dvpt
+dvpt: 3
+lfqf: 4
+humn: 5
+ljgn: 2
+sjmn: drzm * dbpl
+sllz: 4
+pppw: cczh / lfqf
+lgvd: ljgn * ptdq
+drzm: hmdt - zczc
+hmdt: 32
+`;
+
+let lines = raw_data.trim().split("\n");
+
+let monks = null;
+
+function init_monks(){
+  monks = {};
+  lines.map( e => e.split(": ") ).forEach( e => monks[e[0]]='('+e[1].replaceAll(' ','')+')' );
+}
+
+function subst(){
+  let keys = Object.keys(monks);
+  for(let i=0; i<keys.length; i++){
+    let key = keys[i];
+    if( key == 'humn' )continue;
+    
+    for(let j=0; j<keys.length; j++){
+      let key2 = keys[j];
+      monks[key2 ] =  monks[key2].replace( key, monks[key] );
+    }
+  }
+}
+
+//-------------------
+
+init_monks();
+subst();
+let func = new Function( 'humn', 'return '+monks['root'] );
+let param = eval(monks['humn']);
+println( "pt1", func(param) );
+
+//-------------------
+
+init_monks();
+monks['root'] = monks['root'].replace( '+', '-' );
+subst();
+func = new Function( 'humn', 'return '+monks['root'] );
+
+// get the direction of the function
+let dir = Math.sign( func(0) );
+
+// binary search, because why not
+let min = 0;
+let max = 40_000_000_000_000;
+for(let i= 0 ; i< 53 ; i++ ){
+  let mid = (min + max ) / 2;
+  let out = func( mid );
+  if( dir*out > 0 )min = mid;
+  if( dir*out < 0 )max = mid;
+}
+
+println( 'pt2', Math.round( (min+max)/2 ) );
+
+// println("expected ", 152, 301 );
+// println("expected " , 41857219607906 , 3916936880448 );
+
+
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
