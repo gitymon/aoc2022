@@ -1,0 +1,116 @@
+<html>
+<head>
+<script>
+
+function print( s ){
+ document.querySelector("#out").value += s ; 
+}
+	
+function println(){
+  for(let i=0; i<arguments.length; i++){
+    if( i ) print(" ");
+    let s = arguments[i];
+    print( JSON.stringify(s) );
+  }
+  print("\n");
+}
+
+function today(){
+
+ const raw_data=`
+1=-0-2
+12111
+2=0=
+21
+2=01
+111
+20012
+112
+1=-1=
+1-12
+12
+1=
+122
+`;
+
+let lines = raw_data.trim().split("\n");
+
+const FU = "=-012";
+
+function FU_to_b5(line ){
+  let s = [...line].reverse()
+  .map( e => (FU.indexOf(e)-2) )
+  .reduce( (acc,e) => { 
+	let d = e - acc.carry;
+	return {'res':((d+5)%5)+acc.res , 'carry':(d<0)?1:0 } 
+     } , {'res':'','carry':0} )
+  .res;
+
+  // remove leading zero
+  while( s.length>1 && s[0] == '0' ){ s = s.substring(1);  }
+
+  return s;
+}
+
+
+function b5_to_FU( n ){
+  let s = [0,...n].reverse()
+  .map( e => e|0 )
+  .reduce( (acc,e) => {
+    let d = e + acc.carry;
+    return { 'res': FU[((d+2)%5)] +acc.res , 'carry': (d>2)?1:0 };
+  }, {'res':'','carry':0} )
+  .res;
+
+ // remove leading zero
+ while( s.length>1 && s[0] == '0' ){ s = s.substring(1);  }
+
+ return s;
+}
+
+
+// add two numbers in base5, howto do this properly?
+function b5_plus_b5( a, b ){
+
+  // add leading zeroes
+  while( a.length < b.length ){ a = '0'+a; }
+  while( b.length < a.length ){ b = '0'+b; }
+  a = [0,...a].reverse().map( e => e|0 );
+  b = [0,...b].reverse().map( e => e|0 );
+
+  let s = a
+  .reduce( (acc,e,idx) => {
+    let d = e + b[idx] + acc.carry;
+    return { 'res': (d%5)+acc.res , 'carry':(d>=5)?1:0 };
+  } ,  { 'res':'', 'carry':0 } )
+  .res;
+
+  // remove leading zero
+  while( s.length>1 && s[0] == '0' ){ s = s.substring(1);  }
+
+  return s;
+}
+
+
+//------------------------
+
+let total5 = "0";
+
+for( let i=0; i<lines.length ;i++){
+  let num = FU_to_b5( lines[i] );
+  total5 = b5_plus_b5( total5, num ); 
+}
+
+println( "pt1", parseInt(total5,5) , b5_to_FU( total5 ) );
+
+// println( "expected example ", 4890, '2=-1=0' );
+// println( "expected puzzle  ", 34061028947237, '2-0=11=-0-2-1==1=-22' );
+}
+
+</script>
+</head>
+<body onload="today()">
+<textarea cols=40 rows=10 id="out"></textarea>
+
+</body>
+</html>
